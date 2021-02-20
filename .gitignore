@@ -1,0 +1,6 @@
+#ignore somethings
+.vscode
+*.o
+*.stash
+Makefile
+main
