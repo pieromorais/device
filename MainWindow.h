@@ -35,6 +35,7 @@ private:
     size_t INPUT_BLOCK_HEIGHT = 180, INPUT_BLOCK_WIDTH = 200;
     size_t PLOT_BLOCK_HEIGHT = 400, PLOT_BLOCK_WIDTH = 580;
     size_t POP_ERROR_HEIGHT = 150, POP_ERROR_WIDTH = 300;
+    size_t PLOT_OPTIONS_HEIGHT = 200, PLOT_OPTIONS_WIDTH = 580;
     size_t SOME_MARGIN = 15;
     // physical quantities
     double m_voltage, m_frequency, m_cross_section;
@@ -50,6 +51,11 @@ private:
     QDialog *m_error_message;
     QPushButton* m_pop_error_button;
     QLabel* m_pop_error_message;
+    // Plot Options
+    QWidget *m_widget_options_plot;
+    QGridLayout *m_grid_options;
+    QPushButton *m_normal_plot;
+
 };
 
 

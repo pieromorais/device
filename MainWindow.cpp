@@ -21,14 +21,37 @@ MainWindow::MainWindow(QWidget* parent) : QWidget(parent){
     plot_block->setFixedSize(PLOT_BLOCK_WIDTH, PLOT_BLOCK_HEIGHT);
     plot_block->move(200,5);
 
+    // Create a block to receive options for the plot like
+    // plot, real-time plot, usb address, connection status
+    // and other things
+    m_widget_options_plot = new QWidget(this);
+    m_widget_options_plot->setFixedSize(PLOT_BLOCK_WIDTH, INPUT_BLOCK_HEIGHT);
+    m_widget_options_plot->move(201, 410);
+
+    /*
+    QPalette pal = palette();
+    pal.setColor(QPalette::Background, Qt::black);
+    m_widget_options_plot->setAutoFillBackground(true);
+    m_widget_options_plot->setPalette(pal);*/
+
     // Create a grid layout for organize labels
     // entry fields and buttons
     m_input_block = new QGridLayout(input_block);
 
     // Create a canvas for plot the charts
     m_plot = new QCustomPlot(plot_block);
-    m_plot->setFixedSize(PLOT_BLOCK_WIDTH, PLOT_BLOCK_HEIGHT);
+    m_plot->setFixedSize(PLOT_BLOCK_WIDTH, PLOT_BLOCK_HEIGHT);    
     
+    /* 
+        Create the buttons that will define the options for the plots.
+        For example, it will be possible in these fields change the 
+        plot mode from a static one for a dinamic one (real-time).
+    */
+    m_grid_options = new QGridLayout(m_widget_options_plot);
+    m_normal_plot = new QPushButton("ok");
+    m_normal_plot->setFixedSize(10,10);
+    m_grid_options->addWidget(m_normal_plot, 0, 0);
+
     // Set the entry fields and buttons
     for (size_t i = 0; i < 5; i++)
     {
@@ -72,6 +95,26 @@ MainWindow::MainWindow(QWidget* parent) : QWidget(parent){
         m_push_buttons[4], &QPushButton::clicked,
         this, &MainWindow::slotGetMean
     );
+    connect(m_normal_plot, &QPushButton::clicked,
+    this, [this](){
+        QVector<double> x(101), y(101);
+        for (size_t i = 0; i < 101; ++i)
+        {
+            x[i] = i/50.0 - 1;
+            y[i] = x[i]*x[i];
+        }
+        m_plot->addGraph();
+        m_plot->graph(0)->setData(x, y);
+
+        m_plot->xAxis->setLabel("x");
+        m_plot->yAxis->setLabel("y");
+
+        m_plot->xAxis->setRange(-1,1);
+        m_plot->yAxis->setRange(0,1);
+
+        m_plot->replot();
+        
+    });
 }
 
 void MainWindow::slotGetVoltage(void)
