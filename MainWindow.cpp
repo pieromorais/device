@@ -1,5 +1,6 @@
 #include "MainWindow.h"
 #include <iostream>
+#include <cmath>
 MainWindow::MainWindow(QWidget* parent) : QWidget(parent){
     // Class to define the look of the main window for the
     // measure device
@@ -14,19 +15,28 @@ MainWindow::MainWindow(QWidget* parent) : QWidget(parent){
     // Create a block for inputs
     QWidget *input_block = new QWidget(this);
     input_block->setFixedSize(INPUT_BLOCK_WIDTH, INPUT_BLOCK_HEIGHT);
-    input_block->move(0,400);
+    input_block->move(0,415);
 
-    // Create a block for the plot canvas
+    // Create a block for the plot canvas - in this case the histerese chart (BxH)
     QWidget *plot_block = new QWidget(this);
     plot_block->setFixedSize(PLOT_BLOCK_WIDTH, PLOT_BLOCK_HEIGHT);
     plot_block->move(200,5);
 
+    // Create a block for place some buttons for testing
+    m_plot_options_place = new QWidget(this);
+    m_plot_options_place->setFixedSize(50,50);
+    m_plot_options_place->move(0,0);
+    m_testing = new QGridLayout(m_plot_options_place);
+    m_push_test = new QPushButton("Ok");
+    m_testing->addWidget(m_push_test, 0, 0);
+
+    
     // Create a block to receive options for the plot like
     // plot, real-time plot, usb address, connection status
     // and other things
-    m_widget_options_plot = new QWidget(this);
-    m_widget_options_plot->setFixedSize(PLOT_BLOCK_WIDTH, INPUT_BLOCK_HEIGHT);
-    m_widget_options_plot->move(201, 410);
+    m_secundary_plot_block = new QWidget(this);
+    m_secundary_plot_block->setFixedSize(PLOT_BLOCK_WIDTH, INPUT_BLOCK_HEIGHT);
+    m_secundary_plot_block->move(201, 430);
 
     /*
     QPalette pal = palette();
@@ -47,10 +57,10 @@ MainWindow::MainWindow(QWidget* parent) : QWidget(parent){
         For example, it will be possible in these fields change the 
         plot mode from a static one for a dinamic one (real-time).
     */
-    m_grid_options = new QGridLayout(m_widget_options_plot);
-    m_normal_plot = new QPushButton("ok");
-    m_normal_plot->setFixedSize(10,10);
-    m_grid_options->addWidget(m_normal_plot, 0, 0);
+    m_sec_plot = new QCustomPlot(m_secundary_plot_block);
+    m_sec_plot->setFixedSize(SEC_PLOT_WIDTH, SEC_PLOT_HEIGHT);
+    m_sec_plot->xAxis->setLabel("Time (s)");
+    m_sec_plot->yAxis->setLabel("Voltage (V)");
 
     // Set the entry fields and buttons
     for (size_t i = 0; i < 5; i++)
@@ -95,26 +105,44 @@ MainWindow::MainWindow(QWidget* parent) : QWidget(parent){
         m_push_buttons[4], &QPushButton::clicked,
         this, &MainWindow::slotGetMean
     );
-    connect(m_normal_plot, &QPushButton::clicked,
-    this, [this](){
-        QVector<double> x(101), y(101);
-        for (size_t i = 0; i < 101; ++i)
-        {
-            x[i] = i/50.0 - 1;
-            y[i] = x[i]*x[i];
+
+    // Test for see if the voltage plot is working
+    connect(
+        m_push_test, &QPushButton::clicked,
+        m_sec_plot, [this](){
+            m_sec_plot->addGraph();
+            QVector<double> x(251), y(251); // 2 arrays with 251 points
+            for (size_t i = 0; i < 251; i++)
+            {
+                x[i] = (2*M_PI*i)/251;
+                y[i] = sin(x[i]);
+            }
+            m_sec_plot->xAxis->setLabel("Time (s)");
+            m_sec_plot->yAxis->setLabel("Voltage (V)");
+            m_sec_plot->graph(0)->addData(x, y);
+            m_sec_plot->graph(0)->rescaleAxes();
+            m_sec_plot->replot();                 
         }
-        m_plot->addGraph();
-        m_plot->graph(0)->setData(x, y);
+    );
 
-        m_plot->xAxis->setLabel("x");
-        m_plot->yAxis->setLabel("y");
-
-        m_plot->xAxis->setRange(-1,1);
-        m_plot->yAxis->setRange(0,1);
-
-        m_plot->replot();
-        
-    });
+    // test for the primary plot canvas
+    connect(
+        m_push_test, &QPushButton::clicked,
+        m_plot, [this](){
+            m_plot->addGraph();
+            QVector<double> x(251), y(251);
+            for (size_t i = 0; i < 251; i++)
+            {
+                x[i] = i;
+                y[i] = i;
+            }
+            m_plot->xAxis->setLabel("H(A/m)");
+            m_plot->yAxis->setLabel("B(T)");
+            m_plot->graph(0)->addData(x, y);
+            m_plot->graph(0)->rescaleAxes();
+            m_plot->replot();
+        }
+    );
 }
 
 void MainWindow::slotGetVoltage(void)
