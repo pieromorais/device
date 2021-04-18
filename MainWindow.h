@@ -2,6 +2,9 @@
 #define MAINWINDOW_H
 
 #include "qcustomplot.h"
+#include <iostream>
+#include <cmath>
+#include <qt5/QtCore/QTimer>
 #include <qt5/QtWidgets/QDialog>
 #include <qt5/QtWidgets/QGridLayout>
 #include <qt5/QtWidgets/QLayout>
@@ -27,6 +30,9 @@ public slots:
     void slotGetCrossSection(void);
     void slotGetLength(void);
     void slotGetMean(void);
+    void slotNormalPlot(void);
+    void slotRealTimePlot(void);
+   
 private:
     // Standart sizes
     size_t WINDOW_HEIGHT = 600, WINDOW_WIDTH = 800;
@@ -58,8 +64,13 @@ private:
     QWidget *m_plot_options_place;
     QPushButton *m_push_test;
     QGridLayout *m_testing;
+    QPushButton *m_push_test_2;
+    QTimer *m_dataTimer;
+    //QStatusBar *m_status_bar; Posso color isso em algum lugar para controlar os fps
 
+    friend void clear_canvas(QCustomPlot *plot_canvas, unsigned int curve_number);
 };
 
-
+// Auxiliary Functions
+void clear_canvas(QCustomPlot *plot_canvas, unsigned int curve_number);
 #endif
