@@ -1,6 +1,5 @@
 #include "MainWindow.h"
-#include <iostream>
-#include <cmath>
+
 MainWindow::MainWindow(QWidget* parent) : QWidget(parent){
     // Class to define the look of the main window for the
     // measure device
@@ -28,8 +27,13 @@ MainWindow::MainWindow(QWidget* parent) : QWidget(parent){
     m_plot_options_place->move(0,0);
     m_testing = new QGridLayout(m_plot_options_place);
     m_push_test = new QPushButton("Ok");
+    m_push_test->setFixedSize(40, 20);
     m_testing->addWidget(m_push_test, 0, 0);
-
+    // Second button for dinamic testing
+    m_push_test_2 = new QPushButton("Ok 2");
+    m_push_test_2->setFixedSize(40, 20);
+    m_push_test_2->setCheckable(true);
+    m_testing->addWidget(m_push_test_2, 2, 0);
     
     // Create a block to receive options for the plot like
     // plot, real-time plot, usb address, connection status
@@ -48,10 +52,25 @@ MainWindow::MainWindow(QWidget* parent) : QWidget(parent){
     // entry fields and buttons
     m_input_block = new QGridLayout(input_block);
 
-    // Create a canvas for plot the charts
+    // Primary chart set up
     m_plot = new QCustomPlot(plot_block);
-    m_plot->setFixedSize(PLOT_BLOCK_WIDTH, PLOT_BLOCK_HEIGHT);    
+    m_plot->setFixedSize(PLOT_BLOCK_WIDTH, PLOT_BLOCK_HEIGHT);   
     
+    m_plot->addGraph();
+    m_plot->graph(0)->setPen(QPen(QColor(40, 110, 255)));
+
+    m_plot->addGraph();
+    m_plot->graph(1)->setPen(QPen(QColor(255, 110, 40)));
+
+    QSharedPointer <QCPAxisTickerTime> timeTicker(new QCPAxisTickerTime);
+    timeTicker->setTimeFormat("%h:%m:%s");
+    m_plot->xAxis->setTicker(timeTicker);
+    m_plot->axisRect()->setupFullAxesBox();
+    m_plot->yAxis->setRange(-1.2, 1.2);
+    m_plot->xAxis->setLabel("H(A/m)");
+    m_plot->yAxis->setLabel("B(T)");
+    // Finish configure primary canvas.
+
     /* 
         Create the buttons that will define the options for the plots.
         For example, it will be possible in these fields change the 
@@ -61,6 +80,8 @@ MainWindow::MainWindow(QWidget* parent) : QWidget(parent){
     m_sec_plot->setFixedSize(SEC_PLOT_WIDTH, SEC_PLOT_HEIGHT);
     m_sec_plot->xAxis->setLabel("Time (s)");
     m_sec_plot->yAxis->setLabel("Voltage (V)");
+    m_sec_plot->yAxis->setRange(-1.2, 1.2);
+    m_sec_plot->addGraph();
 
     // Set the entry fields and buttons
     for (size_t i = 0; i < 5; i++)
@@ -125,24 +146,31 @@ MainWindow::MainWindow(QWidget* parent) : QWidget(parent){
         }
     );
 
-    // test for the primary plot canvas
+    // Snapshot for the first canvas
     connect(
         m_push_test, &QPushButton::clicked,
-        m_plot, [this](){
-            m_plot->addGraph();
-            QVector<double> x(251), y(251);
-            for (size_t i = 0; i < 251; i++)
-            {
-                x[i] = i;
-                y[i] = i;
-            }
-            m_plot->xAxis->setLabel("H(A/m)");
-            m_plot->yAxis->setLabel("B(T)");
-            m_plot->graph(0)->addData(x, y);
-            m_plot->graph(0)->rescaleAxes();
-            m_plot->replot();
-        }
-    );
+        this, &MainWindow::slotNormalPlot);
+
+    /*
+    ----------Real time plots with qtcustomplot------------
+    */
+   // connect for real time plots
+   connect(m_plot->xAxis, SIGNAL(rangeChanged(QCPRange)), m_plot->xAxis2, SLOT(setRange(QCPRange)));
+   connect(m_plot->yAxis, SIGNAL(rangeChanged(QCPRange)), m_plot->yAxis2, SLOT(setRange(QCPRange)));
+
+   connect(m_push_test_2, &QPushButton::clicked, m_plot, [this](){
+        
+        m_dataTimer = new QTimer();
+        //m_status_bar = new QStatusBar();
+        connect(m_dataTimer, &QTimer::timeout, this, &MainWindow::slotRealTimePlot);        
+        
+        m_dataTimer->start(0);
+    });
+
+    // Sin realtime Plot
+   /*
+   -----------Finish----------
+   */
 }
 
 void MainWindow::slotGetVoltage(void)
@@ -342,4 +370,85 @@ void MainWindow::m_construct_pop_error_value(const char* error_message, size_t q
         m_error_message->show();
         m_error_message->raise();
         m_error_message->activateWindow();
+}
+
+void MainWindow::slotRealTimePlot(void){
+    // Slot for the real time plot in the main for both canvas
+    // BxH chart and voltage entry dinamic chart
+    // Real time plot slot function
+
+    // Access m_plot and m_sec_plot
+    static QTime time(QTime::currentTime());
+    
+    double key = time.elapsed()/1000.0;
+    static double lastPointKey = 0;
+
+    if (m_push_test_2->isChecked())
+    {
+        if (key - lastPointKey > 0.002)
+        {   
+            // Add new graphs
+            m_plot->addGraph();
+            m_sec_plot->addGraph();
+
+            // Primary plot config
+            m_plot->graph(0)->addData(
+                key, qSin(key));
+            m_plot->graph(1)->addData(
+                key, qCos(key));
+
+            // Secundary plot config
+            m_sec_plot->graph(0)->addData(key, qSin(key));
+
+            lastPointKey = key;
+
+            // Run to the side.
+            m_plot->xAxis->setRange(key, 8, Qt::AlignRight);
+            m_sec_plot->xAxis->setRange(key, 8, Qt::AlignRight);
+
+            // Plotting both charts - primary and secundary
+            m_plot->replot();
+            m_sec_plot->replot();        
+        }
+    }else{
+
+        clear_canvas(m_plot, 2);
+        clear_canvas(m_sec_plot, 1);
+
+        key = 0;
+        lastPointKey = 0;
+        time.restart(); // Restart timer to zero.
+        m_dataTimer->stop();
+    }    
+}
+
+void MainWindow::slotNormalPlot(void){
+    // slot that works the normal plot (snapshot)
+    // For both canvas (primary and secondary)
+        QVector<double> x(251), y(251), y1(251);
+            for (size_t i = 0; i < 251; i++)
+            {
+                x[i] = i;
+                y[i] = i;
+                y1[i] = 251-i;
+            }
+            m_plot->addGraph();
+            m_plot->graph(0)->setData(x, y);
+            m_plot->graph(1)->setData(x, y1);
+            m_plot->graph(0)->rescaleAxes();
+            m_plot->graph(1)->rescaleAxes();
+            m_plot->replot();
+}
+
+void clear_canvas(QCustomPlot *plot_canvas, unsigned int curve_number){
+    // Friend function that clear the plots
+    // receive the canvas that will be clear.
+    plot_canvas->addGraph();
+    for (size_t i = 0; i < curve_number; i++)
+    {
+        plot_canvas->graph(i)->data()->clear();
+    }
+    plot_canvas->xAxis->setRange(0, 5);
+    plot_canvas->yAxis->setRange(-1.2, 1.2);
+    plot_canvas->replot();
 }
